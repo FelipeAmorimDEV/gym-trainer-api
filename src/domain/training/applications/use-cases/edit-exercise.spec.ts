@@ -2,17 +2,29 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { InMemoryExercisesRepository } from '../../../../../test/repositories/in-memory-exercises-repository'
 import { EditExerciseUseCase } from './edit-exercise'
 import { Exercise } from '../../enterprise/entities/exercise'
+import { InMemoryUsersRepository } from '../../../../../test/repositories/in-memory-users-repository'
+import { UserAutorizationServiceImpl } from '../../../identity-management/applications/services/user-autorization-service'
+import { makeAdmin } from '../../../../../test/factories/make-admin'
+import { UniqueEntityID } from '../../../../core/entities/unique-entity-id'
+import { makeStudent } from '../../../../../test/factories/make-student'
 
 let inMemoryExercisesRepository: InMemoryExercisesRepository
+let inMemoryUsersRepository: InMemoryUsersRepository
+let userAutorizationService: UserAutorizationServiceImpl
 let sut: EditExerciseUseCase
 
 describe('Edit Exercise', () => {
   beforeEach(() => {
+    inMemoryUsersRepository = new InMemoryUsersRepository()
     inMemoryExercisesRepository = new InMemoryExercisesRepository()
-    sut = new EditExerciseUseCase(inMemoryExercisesRepository)
+    userAutorizationService = new UserAutorizationServiceImpl(inMemoryUsersRepository)
+    sut = new EditExerciseUseCase(userAutorizationService, inMemoryExercisesRepository)
   })
 
   it('should be able to edit a exercise', async () => {
+    const admin = makeAdmin({}, new UniqueEntityID('admin-1'))
+    inMemoryUsersRepository.create(admin)
+
     const exerciseCreated = Exercise.create({
       name: 'Supino Inclinado',
       videoUrl: 'http://youtube.com/supinoinclinado',
@@ -22,6 +34,7 @@ describe('Edit Exercise', () => {
     await inMemoryExercisesRepository.create(exerciseCreated)
 
     const { exercise } = await sut.execute({
+      userId: 'admin-1',
       exerciseId: exerciseCreated.id.toString(),
       name: 'Supino Reto',
       description: 'Descrição Alterada',
@@ -38,5 +51,27 @@ describe('Edit Exercise', () => {
         videoUrl: 'http://youtube.com/supinoinclinado',
       }),
     )
+  })
+
+  it('should not be able to edit a exercise with student account', async () => {
+    const student = makeStudent({}, new UniqueEntityID('student-1'))
+    inMemoryUsersRepository.create(student)
+
+    const exerciseCreated = Exercise.create({
+      name: 'Supino Inclinado',
+      videoUrl: 'http://youtube.com/supinoinclinado',
+      description: 'Descrição',
+    })
+
+    await inMemoryExercisesRepository.create(exerciseCreated)
+
+    expect(() => {
+      return sut.execute({
+        userId: 'student-1',
+        exerciseId: exerciseCreated.id.toString(),
+        name: 'Supino Reto',
+        description: 'Descrição Alterada',
+      })
+    }).rejects.toBeInstanceOf(Error)
   })
 })

@@ -33,6 +33,10 @@ export abstract class User<Props extends UserProps> extends Entity<Props> {
     return this.props.updatedAt
   }
 
+  set name(newName: string) {
+    this.props.name = newName
+  }
+
   touch() {
     this.props.updatedAt = new Date()
   }

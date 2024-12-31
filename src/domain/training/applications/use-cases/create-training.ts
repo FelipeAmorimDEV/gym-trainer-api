@@ -4,6 +4,7 @@ import { StudentExercise } from '../../enterprise/entities/student-exercise'
 import { StudentExerciseList } from '../../enterprise/entities/student-exercise-list'
 import { DayOfWeek, Training } from '../../enterprise/entities/training'
 import { TrainingsRepository } from '../repositories/trainings-repository'
+import { UsersAutorizationService } from '../repositories/users-autorization-service'
 
 type Exercise = {
   exerciseId: string
@@ -13,6 +14,7 @@ type Exercise = {
 }
 
 interface CreateTrainingUseCaseRequest {
+  userId: string
   name: string
   type: 'DAY' | 'SESSION'
   exercises: Exercise[]
@@ -25,15 +27,25 @@ interface CreateTrainingUseCaseResponse {
 }
 
 export class CreateTrainingUseCase {
-  constructor(private trainingsRepository: TrainingsRepository) {}
+  constructor(
+    private userAutorizationService: UsersAutorizationService,
+    private trainingsRepository: TrainingsRepository
+  ) { }
 
   async execute({
+    userId,
     name,
     type,
     dayOfWeek,
     exercises,
     trainingPlanId,
   }: CreateTrainingUseCaseRequest): Promise<CreateTrainingUseCaseResponse> {
+    const isAdmin = await this.userAutorizationService.isAdmin(userId)
+
+    if (!isAdmin) {
+      throw new Error("Not Allowed")
+    }
+
     const training = Training.create({
       name,
       type,

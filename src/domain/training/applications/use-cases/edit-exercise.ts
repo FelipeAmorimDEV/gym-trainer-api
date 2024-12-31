@@ -1,7 +1,9 @@
 import { Exercise } from '../../enterprise/entities/exercise'
 import { ExercisesRepository } from '../repositories/exercises-repository'
+import { UsersAutorizationService } from '../repositories/users-autorization-service'
 
 interface EditExerciseUseCaseRequest {
+  userId: string
   exerciseId: string
   name?: string
   videoUrl?: string
@@ -13,14 +15,24 @@ interface EditExerciseUseCaseResponse {
 }
 
 export class EditExerciseUseCase {
-  constructor(private exercisesRepository: ExercisesRepository) {}
+  constructor(
+    private userAutorizationService: UsersAutorizationService,
+    private exercisesRepository: ExercisesRepository
+  ) { }
 
   async execute({
+    userId,
     exerciseId,
     name,
     videoUrl,
     description,
   }: EditExerciseUseCaseRequest): Promise<EditExerciseUseCaseResponse> {
+    const isAdmin = await this.userAutorizationService.isAdmin(userId)
+
+    if (!isAdmin) {
+      throw new Error("Not allowed.")
+    }
+
     const exercise = await this.exercisesRepository.findById(exerciseId)
 
     if (!exercise) {

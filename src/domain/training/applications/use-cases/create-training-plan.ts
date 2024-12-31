@@ -4,9 +4,11 @@ import {
   TrainingStrategy,
 } from '../../enterprise/entities/training-plan'
 import { TrainingPlansRepository } from '../repositories/training-plans-repository'
+import { UsersAutorizationService } from '../repositories/users-autorization-service'
 
 interface CreateTrainingPlanUseCaseRequest {
   userId: string
+  studentId: string
   name: string
   goal: string
   sessionsPerWeek: number
@@ -20,10 +22,14 @@ interface CreateTrainingPlanUseCaseResponse {
 }
 
 export class CreateTrainingPlanUseCase {
-  constructor(private trainingPlansRepository: TrainingPlansRepository) {}
+  constructor(
+    private userAutorizationService: UsersAutorizationService,
+    private trainingPlansRepository: TrainingPlansRepository
+  ) { }
 
   async execute({
     userId,
+    studentId,
     name,
     goal,
     sessionsPerWeek,
@@ -31,8 +37,14 @@ export class CreateTrainingPlanUseCase {
     startDate,
     endDate,
   }: CreateTrainingPlanUseCaseRequest): Promise<CreateTrainingPlanUseCaseResponse> {
+    const isAdmin = await this.userAutorizationService.isAdmin(userId)
+
+    if (!isAdmin) {
+      throw new Error("Not allowed.")
+    }
+
     const trainingPlan = TrainingPlan.create({
-      userId: new UniqueEntityID(userId),
+      studentId: new UniqueEntityID(studentId),
       name,
       goal,
       sessionsPerWeek,

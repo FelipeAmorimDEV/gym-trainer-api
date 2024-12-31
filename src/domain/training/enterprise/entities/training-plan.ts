@@ -8,7 +8,7 @@ export enum TrainingStrategy {
 }
 
 interface TrainingPlanProps {
-  userId: UniqueEntityID
+  studentId: UniqueEntityID
   name: string
   goal: string
   sessionsPerWeek: number
@@ -20,8 +20,8 @@ interface TrainingPlanProps {
 }
 
 export class TrainingPlan extends Entity<TrainingPlanProps> {
-  get userId() {
-    return this.props.userId
+  get studentId() {
+    return this.props.studentId
   }
 
   get name() {

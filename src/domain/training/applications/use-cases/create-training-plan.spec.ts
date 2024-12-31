@@ -3,18 +3,33 @@ import { InMemoryTrainingPlansRepository } from '../../../../../test/repositorie
 import { CreateTrainingPlanUseCase } from './create-training-plan'
 import { TrainingStrategy } from '../../enterprise/entities/training-plan'
 
+
+import { InMemoryUsersRepository } from '../../../../../test/repositories/in-memory-users-repository'
+import { UserAutorizationServiceImpl } from '../../../identity-management/applications/services/user-autorization-service'
+import { makeAdmin } from '../../../../../test/factories/make-admin'
+import { UniqueEntityID } from '../../../../core/entities/unique-entity-id'
+import { makeStudent } from '../../../../../test/factories/make-student'
+
 let inMemoryTrainingPlansRepository: InMemoryTrainingPlansRepository
+let userAutorizationService: UserAutorizationServiceImpl
+let inMemoryUsersRepository: InMemoryUsersRepository
 let sut: CreateTrainingPlanUseCase
 
 describe('Create Training Plan', () => {
   beforeEach(() => {
+    inMemoryUsersRepository = new InMemoryUsersRepository()
+    userAutorizationService = new UserAutorizationServiceImpl(inMemoryUsersRepository)
     inMemoryTrainingPlansRepository = new InMemoryTrainingPlansRepository()
-    sut = new CreateTrainingPlanUseCase(inMemoryTrainingPlansRepository)
+    sut = new CreateTrainingPlanUseCase(userAutorizationService, inMemoryTrainingPlansRepository)
   })
 
   it('should be able to create a training plan', async () => {
+    const admin = makeAdmin({}, new UniqueEntityID('admin-1'))
+    inMemoryUsersRepository.create(admin)
+
     const { trainingPlan } = await sut.execute({
-      userId: 'user-1',
+      userId: 'admin-1',
+      studentId: 'student-1',
       name: 'Treino Hipertrofia',
       goal: 'Hipertrofia',
       sessionsPerWeek: 3,
@@ -29,5 +44,24 @@ describe('Create Training Plan', () => {
         name: 'Treino Hipertrofia',
       }),
     )
+  })
+
+  it('should not be able to create a training plan with student user', async () => {
+    const student = makeStudent({}, new UniqueEntityID('student-1'))
+    inMemoryUsersRepository.create(student)
+
+    await expect(() => {
+      return sut.execute({
+        userId: 'student-1',
+        studentId: 'student-1',
+        name: 'Treino Hipertrofia',
+        goal: 'Hipertrofia',
+        sessionsPerWeek: 3,
+        strategy: TrainingStrategy.FIXED_DAYS,
+        startDate: new Date(2024, 6, 10),
+        endDate: new Date(2024, 9, 10),
+      })
+    }).rejects.toBeInstanceOf(Error)
+
   })
 })
